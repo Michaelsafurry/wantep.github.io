@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Phrase Translator</title>
+    <title>Advanced Translator with Prefixes and Suffixes</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -34,7 +34,7 @@
 </head>
 <body>
 <div id="translator">
-    <h2>Phrase Translator</h2>
+    <h2>Advanced Translator</h2>
     <input type="text" id="phraseInput" placeholder="Enter phrases with punctuation">
     <button onclick="translatePhrases()">Translate</button>
     <div id="output"></div>
@@ -42,14 +42,24 @@
 
 <script>
     let translationMap = {};
+    let prefixMap = {};
+    let suffixMap = {};
 
-    // Load translations from text files and create a map
+    // Load translations and affixes from text files and create maps
     async function loadTranslations() {
-        const originalResponse = await fetch('original_phrases.txt');
-        const translatedResponse = await fetch('translated_phrases.txt');
+        const originalResponse = await fetch('https://raw.githubusercontent.com/Michaelsafurry/wantep.github.io/refs/heads/main/original_phrases.txt');
+        const translatedResponse = await fetch('https://raw.githubusercontent.com/Michaelsafurry/wantep.github.io/refs/heads/main/translated_phrases.txt');
+        const originalPrefixesResponse = await fetch('https://raw.githubusercontent.com/Michaelsafurry/wantep.github.io/refs/heads/main/original_prefixes.txt');
+        const translatedPrefixesResponse = await fetch('https://raw.githubusercontent.com/Michaelsafurry/wantep.github.io/refs/heads/main/translated_prefixes.txt');
+        const originalSuffixesResponse = await fetch('https://raw.githubusercontent.com/Michaelsafurry/wantep.github.io/refs/heads/main/original_suffixes.txt');
+        const translatedSuffixesResponse = await fetch('https://raw.githubusercontent.com/Michaelsafurry/wantep.github.io/refs/heads/main/translated_suffixes.txt');
 
         const originalText = await originalResponse.text();
         const translatedText = await translatedResponse.text();
+        const originalPrefixesText = await originalPrefixesResponse.text();
+        const translatedPrefixesText = await translatedPrefixesResponse.text();
+        const originalSuffixesText = await originalSuffixesResponse.text();
+        const translatedSuffixesText = await translatedSuffixesResponse.text();
 
         const originalPhrases = originalText.split('\n').map(line => line.trim());
         const translatedPhrases = translatedText.split('\n').map(line => line.trim());
@@ -58,6 +68,25 @@
         originalPhrases.forEach((phrase, index) => {
             if (phrase) {
                 translationMap[phrase.toLowerCase()] = translatedPhrases[index];
+            }
+        });
+
+        // Create maps for prefixes and suffixes using corresponding files
+        const originalPrefixes = originalPrefixesText.split('\n').map(line => line.trim());
+        const translatedPrefixes = translatedPrefixesText.split('\n').map(line => line.trim());
+        
+        originalPrefixes.forEach((prefix, index) => {
+            if (prefix) {
+                prefixMap[prefix] = translatedPrefixes[index];
+            }
+        });
+
+        const originalSuffixes = originalSuffixesText.split('\n').map(line => line.trim());
+        const translatedSuffixes = translatedSuffixesText.split('\n').map(line => line.trim());
+
+        originalSuffixes.forEach((suffix, index) => {
+            if (suffix) {
+                suffixMap[suffix] = translatedSuffixes[index];
             }
         });
     }
@@ -69,17 +98,39 @@
 
         const translatedWords = words.map(word => {
             // Remove punctuation from the word for matching purposes
-            const cleanWord = word.toLowerCase().replace(/[^a-z\s]/g, '');
-            
-            // Check if the word has a translation in the map
-            if (translationMap[cleanWord]) {
-                return applyTransformations(word, translationMap[cleanWord]);
-            } else {
-                return word; // Return original if not found
+            let cleanWord = word.toLowerCase().replace(/[^a-z]/g, '');
+
+            // Translate prefixes and suffixes if applicable
+            let prefixTranslated = '';
+            let suffixTranslated = '';
+
+            for (const prefix in prefixMap) {
+                if (cleanWord.startsWith(prefix)) {
+                    prefixTranslated = prefixMap[prefix];
+                    cleanWord = cleanWord.slice(prefix.length);
+                    break; // Only apply the first matching prefix
+                }
             }
+
+            for (const suffix in suffixMap) {
+                if (cleanWord.endsWith(suffix)) {
+                    suffixTranslated = suffixMap[suffix];
+                    cleanWord = cleanWord.slice(0, -suffix.length);
+                    break; // Only apply the first matching suffix
+                }
+            }
+
+            // Check if the core word has a translation in the map
+            let coreTranslation = translationMap[cleanWord] || cleanWord;
+
+            // Reconstruct the word with translations applied to prefixes and suffixes
+            let fullTranslation = `${prefixTranslated}${coreTranslation}${suffixTranslated}`;
+
+            return applyTransformations(word, fullTranslation);
         });
 
-        outputElement.textContent = `Translation: ${translatedWords.join('')}`;
+        // Join translated words with a space to ensure proper spacing
+        outputElement.textContent = `Translation: ${translatedWords.join(' ').trim()}`;
     }
 
     function applyTransformations(originalWord, translatedWord) {
