@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Phrase Translator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #translator {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #output {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div id="translator">
+    <h2>Phrase Translator</h2>
+    <input type="text" id="phraseInput" placeholder="Enter phrases with punctuation">
+    <button onclick="translatePhrases()">Translate</button>
+    <div id="output"></div>
+</div>
+
+<script>
+    let translationMap = {};
+
+    // Load translations from text files and create a map
+    async function loadTranslations() {
+        const originalResponse = await fetch('original_phrases.txt');
+        const translatedResponse = await fetch('translated_phrases.txt');
+
+        const originalText = await originalResponse.text();
+        const translatedText = await translatedResponse.text();
+
+        const originalPhrases = originalText.split('\n').map(line => line.trim());
+        const translatedPhrases = translatedText.split('\n').map(line => line.trim());
+
+        // Create a map of original to translated phrases
+        originalPhrases.forEach((phrase, index) => {
+            if (phrase) {
+                translationMap[phrase.toLowerCase()] = translatedPhrases[index];
+            }
+        });
+    }
+
+    function translatePhrases() {
+        const inputText = document.getElementById('phraseInput').value.trim();
+        const words = inputText.split(/\b/); // Split by word boundaries
+        const outputElement = document.getElementById('output');
+
+        const translatedWords = words.map(word => {
+            // Remove punctuation from the word for matching purposes
+            const cleanWord = word.toLowerCase().replace(/[^a-z\s]/g, '');
+            
+            // Check if the word has a translation in the map
+            if (translationMap[cleanWord]) {
+                return applyTransformations(word, translationMap[cleanWord]);
+            } else {
+                return word; // Return original if not found
+            }
+        });
+
+        outputElement.textContent = `Translation: ${translatedWords.join('')}`;
+    }
+
+    function applyTransformations(originalWord, translatedWord) {
+        // Preserve capitalization of the original word
+        if (originalWord.charAt(0).toUpperCase() === originalWord.charAt(0)) {
+            translatedWord = translatedWord.charAt(0).toUpperCase() + translatedWord.slice(1);
+        }
+
+        return translatedWord;
+    }
+
+    document.getElementById('phraseInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            translatePhrases();
+        }
+    });
+
+    // Load translations when the page loads
+    window.onload = loadTranslations;
+</script>
+</body>
+</html>
